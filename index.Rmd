@@ -1,34 +1,75 @@
 ---
-title: "My Awesome Website"
-author: "Andrea Rawson"
+title: "My Final Project"
+author: "Guy Incognito"
 date: "Last updated on `r Sys.Date()`"
 output:
   html_document:
+    runtime : shiny
     toc: true
     toc_depth: 2
     toc_float: true
     df_print: kable
+    code_folding : hide
 ---
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Set R Markdown chunk defaults:
+knitr::opts_chunk$set(
+  echo = TRUE, message = FALSE, warning = FALSE, 
+  fig.width = 16/2, fig.height = 9/2
+)
+```
+
+```{r}
+library(tidyverse)
+library(readr)
+library(sf)
+library(rmarkdown)
+```
+
+```{r}
+# Data Wrangling 
+happy2015 <- read.csv("world-happiness-report/2015.csv")
+happy2017 <- read.csv("world-happiness-report/2016.csv")
+
+countryShapes <- read_sf("UIA_World_Countries_Boundaries") %>%
+  select(Country, geometry)
+
+happyRank2015 <- happy2015 %>% 
+  select(Country, Happiness.Score) %>% 
+  rename( "HappinessScore2015" = "Happiness.Score")
+
+happyRank2017 <- happy2017 %>% 
+  select(Country, Happiness.Score) %>% 
+  rename( "HappinessScore2017" = "Happiness.Score")
+
+happyChange <- left_join(happyRank2015,happyRank2017, by = "Country")%>%
+ mutate(happinessChange = HappinessScore2017-HappinessScore2015) 
+
+
+worldHappyChange <- inner_join(happyChange, countryShapes, by = "Country")
+
+```
+
+```{r}
+  ggplot() +
+  geom_sf(data = worldHappyChange, aes(fill = happinessChange)) +
+  scale_fill_continuous(type = "viridis")
+
+
+```
+
+```{r}
+```
+
+
 
 <!--
 Comments in HTML are like this! 
 -->
 
 
-Hello, Website!
 
-# My first section
+# SECTION NAME
 
-```{r}
-library(ggplot2)
-ggplot(mtcars, aes(x=cyl, y= mpg)) +
-  geom_point() +
-  labs(x= "Number of cylinders", y = "Miles per gallon")
-```
-
-
-# My second section
-
-```{r}
-head(mtcars)
-```
+Write your blog post here.

@@ -1,0 +1,220 @@
+---
+title: "More information"
+author: "Andrea Rawson"
+date: "Last updated on `r Sys.Date()`"
+output:
+  html_document:
+    runtime : shiny
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    df_print: kable
+    code_folding: hide
+---
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Set R Markdown chunk defaults:
+knitr::opts_chunk$set(
+  echo = TRUE, message = FALSE, warning = FALSE, 
+  fig.width = 16/2, fig.height = 9/2
+)
+```
+
+```{r}
+library(tidyverse)
+library(readr)
+library(sf)
+library(ggrepel)
+library(shiny)
+library(rmarkdown)
+```
+
+```{r}
+happy2015 <- read.csv("world-happiness-report/2015.csv")
+happy2016 <- read.csv("world-happiness-report/2016.csv")
+happy2017 <- read.csv("world-happiness-report/2017.csv")
+
+happyRank2015region <- happy2015 %>% 
+  select(Country, Happiness.Score, Region) %>% 
+  rename( "HappinessScore2015" = "Happiness.Score") %>%
+  group_by(Region) %>%
+  summarize(avgHappinessScore = mean(HappinessScore2015)) %>%
+  mutate(year = 2015)
+
+happyRank2016region <- happy2016 %>% 
+  select(Country, Happiness.Score, Region) %>% 
+  rename( "HappinessScore2016" = "Happiness.Score") %>%
+  group_by(Region) %>%
+  summarize(avgHappinessScore = mean(HappinessScore2016)) %>%
+  mutate(year = 2016)
+
+regionHelp <- happy2015 %>% select(Country, Region)
+
+happyRank2017regionold <- happy2017 %>% 
+  select(Country, Happiness.Score)
+
+happyRank2017region <- inner_join(happyRank2017regionold, regionHelp, by = "Country") %>%
+  rename( "HappinessScore2017" = "Happiness.Score") %>%
+  group_by(Region) %>%
+  summarize(avgHappinessScore = mean(HappinessScore2017)) %>%
+  mutate(year = 2017)
+
+
+happySlope <- rbind(happyRank2015region,happyRank2016region,happyRank2017region) %>%
+  mutate(avgHappinessScore = round(avgHappinessScore,4))
+
+```
+
+
+```{r, fig.width=8, fig.height=10, message= FALSE}
+# Creating A slopgraph
+renderPlot(
+ggplot(data = happySlope, aes(x = year, y = avgHappinessScore, group = Region)) +
+  geom_line(aes(color = Region, alpha = 1), size = 2) +
+  geom_point(aes(color = Region, alpha = 1), size = 4) +
+  geom_text_repel(data = happySlope %>% filter(year == "2015"),
+                  aes(label = paste0(Region, " - ", avgHappinessScore)) , 
+                  hjust = "left", 
+                  fontface = "bold", 
+                  size = 4, 
+                  nudge_x = -.45, 
+                  direction = "y") +
+  geom_text_repel(data = happySlope %>% filter(year == "2017"), 
+                  aes(label = paste0(Region, " - ", avgHappinessScore)) , 
+                  hjust = "right", 
+                  fontface = "bold", 
+                  size = 4, 
+                  nudge_x = .5, 
+                  direction = "y")+
+  scale_x_discrete(position = "top") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  theme(panel.border = element_blank()) +
+  theme(axis.title.y = element_blank()) +
+  theme(axis.text.y = element_blank()) +
+  theme(panel.grid.major.y = element_blank()) +
+  theme(panel.grid.minor.y = element_blank()) +
+  theme(axis.title.x     = element_blank()) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(axis.text.x.top = element_text(size=12)) +
+  theme(axis.ticks= element_blank()) +
+  labs(
+    title = "Change in Average Happiness Score by Region")
+)
+```
+
+
+```{r}
+# creating data set for Shiny
+ happy2015per <- happy2015 %>%
+   select(-Region, -Happiness.Rank,-Standard.Error) %>%
+   rename("Score2015" = "Happiness.Score",
+          "Economy2015" = "Economy..GDP.per.Capita.",
+          "Family2015" = "Family",
+          "Health2015" = "Health..Life.Expectancy.",
+          "Freedom2015" = "Freedom",
+          "Trust2015" = "Trust..Government.Corruption.",
+          "Generosity2015" = "Generosity",
+          "Dystopia2015" = "Dystopia.Residual")
+
+ happy2017per <- happy2017 %>%
+   select(-Happiness.Rank, - Whisker.high, -Whisker.low) %>%
+   rename("Score2017" = "Happiness.Score",
+          "Economy2017" = "Economy..GDP.per.Capita.",
+          "Family2017" = "Family",
+          "Health2017" = "Health..Life.Expectancy.",
+          "Freedom2017" = "Freedom",
+          "Trust2017" = "Trust..Government.Corruption.",
+          "Generosity2017" = "Generosity",
+          "Dystopia2017" = "Dystopia.Residual")
+
+ happyChangePercent <- inner_join(happy2015per,happy2017per , by = "Country")
+
+ happyChangePercent <- happyChangePercent %>%
+   mutate( ScorePercentChange = ((Score2017 - Score2015)/Score2015)*100,
+           EconomyPercentChange = ((Economy2017 - Economy2015)/Economy2015)*100,
+          FamilyPercentChange = ((Family2017 - Family2015)/Family2015)*100,
+          HealthPercentChange = ((Health2017 - Health2015)/Health2015)*100,
+          FreedomPercentChange = ((Freedom2017 - Freedom2015)/Freedom2015)*100,
+          TrustPercentChange = ((Trust2017 - Trust2015)/Trust2015)*100,
+          GenerosityPercentChange = ((Generosity2017 - Generosity2015)/Generosity2015)*100,
+          DystopiaPercentChange = ((Dystopia2017 - Dystopia2015)/Dystopia2015)*100) %>%
+   select(Country,
+          ScorePercentChange,
+          EconomyPercentChange,
+          FamilyPercentChange,
+          HealthPercentChange,
+          FreedomPercentChange,
+          TrustPercentChange,
+          GenerosityPercentChange,
+          DystopiaPercentChange)
+
+```
+
+
+```{r}
+# selectInput(inputId = "x",
+#                    label = "X-axis:",
+#                    choices = c("EconomyPercentChange",
+#                                "FamilyPercentChange",
+#                                "HealthPercentChange",
+#                                "FreedomPercentChange",
+#                                "TrustPercentChange",
+#                                "GenerosityPercentChange",
+#                                "DystopiaPercentChange"),
+#                    selected = "EconomyPercentChange")
+#            
+# 
+# renderPlot({
+#      ggplot(data = happyChangePercent, aes_string( y = happyChangePercent$ScorePercentChange,x = input$x)) +
+#        geom_point() +
+#       geom_smooth(method = "lm")+
+#        labs(x = input$x,
+#            y = "Score Percent Change")
+#    })
+```
+
+
+```{r}
+#testing out shiny
+   ui <- fluidPage(
+     sidebarLayout(
+      sidebarPanel(
+       selectInput(inputId = "x",
+                   label = "X-axis:",
+                   choices = c("EconomyPercentChange",
+                               "FamilyPercentChange",
+                               "HealthPercentChange",
+                               "FreedomPercentChange",
+                               "TrustPercentChange",
+                               "GenerosityPercentChange",
+                               "DystopiaPercentChange"),
+                   selected = "EconomyPercentChange")
+           ),
+     mainPanel(
+       plotOutput(outputId = "scatterplot", height = 400)
+   )
+   )
+ )
+
+ server <- function(input,output) {
+   output$scatterplot <- renderPlot({
+     ggplot(data = happyChangePercent, aes_string( y = happyChangePercent$ScorePercentChange,x = input$x)) +
+       geom_point() +
+      geom_smooth(method = "lm")+
+       labs(x = input$x,
+           y = "Score Percent Change")
+   })
+ }
+
+shinyApp(ui = ui, server = server)
+
+```
+
+<!--
+Comments in HTML are like this! 
+-->
+
+# SECTION NAME
+
+Write your "more information" section here.
